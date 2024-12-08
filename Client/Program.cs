@@ -13,7 +13,59 @@ namespace Client
         static void Main(string[] args)
         {
             OnSetings();
+
+            while (true)
+            {
+                SetCommand();
+            }
         }
+
+        static void Help()
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Commands to the server: ");
+            
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("/config");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(" - set initial settings");
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("/connect");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(" - connection to the server");
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("/status");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(" - show list users");
+        }
+
+        static 
+
+        static void SetCommand()
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            string Command = Console.ReadLine();
+            if (Command == "/config")
+            {
+                File.Delete(Directory.GetCurrentDirectory() + "/.config");
+                OnSetings();
+            }
+            else if (Command == "/connect")
+            {
+
+            }
+            else if (Command == "/status")
+            {
+
+            }
+            else if (Command == "/help")
+            {
+                Help();
+            }
+        }
+
         static void OnSetings()
         {
             string Path = Directory.GetCurrentDirectory() + "/.config";
