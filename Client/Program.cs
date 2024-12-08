@@ -1,6 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
 
 namespace Client
 {
@@ -8,12 +11,13 @@ namespace Client
     {
         static IPAddress ServerIpAddress;
         static int ServerPort;
-        static string ServerToken;
+        static string ClientToken;
         static DateTime ClientDateConnection;
         static void Main(string[] args)
         {
             OnSetings();
-
+            Thread tCheckToken = new Thread(CheckToken);
+            tCheckToken.Start();
             while (true)
             {
                 SetCommand();
@@ -27,21 +31,100 @@ namespace Client
             
             Console.ForegroundColor = ConsoleColor.Green;
             Console.Write("/config");
-            Console.ForegroundColor = ConsoleColor.Green;
+            Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine(" - set initial settings");
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.Write("/connect");
-            Console.ForegroundColor = ConsoleColor.Green;
+            Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine(" - connection to the server");
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.Write("/status");
-            Console.ForegroundColor = ConsoleColor.Green;
+            Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine(" - show list users");
         }
 
-        static 
+        static void GetStatus()
+        {
+            int Duration = (int)DateTime.Now.Subtract(ClientDateConnection).TotalSeconds;
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Client: {ClientToken}, time connection: {ClientDateConnection.ToString("HH:mm:ss dd.MM")}, " + $" duration: {Duration}"); 
+        }
+
+        static void ConnectServer()
+        {
+            IPEndPoint endPoint = new IPEndPoint(ServerIpAddress, ServerPort);
+            Socket Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            try
+            {
+                Socket.Connect(endPoint);
+            }
+            catch (Exception exp)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error" + exp.Message);
+            }
+            if (Socket.Connected)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Connection to server successful");
+                Socket.Send(Encoding.UTF8.GetBytes("/token"));
+
+                byte[] Bytes = new byte[10485760];
+                int ByteRec = Socket.Receive(Bytes);
+                string Responce = Encoding.UTF8.GetString(Bytes, 0, ByteRec);
+                if (Responce == "/limit")
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("There is not enough spaceon the license server");
+                }
+                else
+                {
+                    ClientToken = Responce;
+                    ClientDateConnection = DateTime.Now;
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Responce connection token: " + ClientToken);
+                }
+            }
+        }
+
+        static void CheckToken()
+        {
+            while (true)
+            {
+                if (ClientToken != "")
+                {
+                    IPEndPoint endPoint = new IPEndPoint(ServerIpAddress, ServerPort);
+                    Socket Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    try
+                    {
+                        Socket.Connect(endPoint);
+                    }
+                    catch (Exception exp)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error" + exp.Message);
+                    }
+                    if (Socket.Connected)
+                    {
+                        Socket.Send(Encoding.UTF8.GetBytes(ClientToken));
+
+                        byte[] Bytes = new byte[10485760];
+                        int ByteRec = Socket.Receive(Bytes);
+                        string Responce = Encoding.UTF8.GetString(Bytes, 0, ByteRec);
+                        if (Responce == "/disconnect")
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("The client is disconnected from the server");
+                            ClientToken = String.Empty;
+                        }
+                    }
+                } 
+                Thread.Sleep(1000);
+            }
+            
+        }
 
         static void SetCommand()
         {
@@ -54,11 +137,11 @@ namespace Client
             }
             else if (Command == "/connect")
             {
-
+                ConnectServer();
             }
             else if (Command == "/status")
             {
-
+                GetStatus();
             }
             else if (Command == "/help")
             {
