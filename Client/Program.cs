@@ -27,7 +27,7 @@ namespace Client
         static void Help()
         {
             Console.ForegroundColor = ConsoleColor.White;
-            Console.Write("Commands to the server: ");
+            Console.Write("Commands to the clients: ");
             
             Console.ForegroundColor = ConsoleColor.Green;
             Console.Write("/config");
@@ -104,7 +104,7 @@ namespace Client
                     catch (Exception exp)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Error" + exp.Message);
+                        Console.WriteLine("Error " + exp.Message);
                     }
                     if (Socket.Connected)
                     {
