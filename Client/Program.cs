@@ -93,7 +93,7 @@ namespace Client
         {
             while (true)
             {
-                if (ClientToken != "")
+                if (!String.IsNullOrEmpty(ClientToken))
                 {
                     IPEndPoint endPoint = new IPEndPoint(ServerIpAddress, ServerPort);
                     Socket Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
