@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,6 +18,7 @@ namespace Server
         static int Duration;
 
         static List<Client> AllClients = new List<Client>();
+        private static AppDbContext data = new AppDbContext();
         static void Main(string[] args)
         {
             OnSetings();
@@ -43,6 +45,7 @@ namespace Server
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine($"Client: {AllClients[iClient].Token} disconnect from server due to timeout");
                         AllClients.RemoveAt(iClient);
+                        Console.WriteLine($"Client: {AllClients.Count}");
                     }
                 }
                 Thread.Sleep(1000);
@@ -63,23 +66,37 @@ namespace Server
                 byte[] Bytes = new byte[10485760];
                 int ByteRec = Handler.Receive(Bytes);
                 string Message = Encoding.UTF8.GetString(Bytes, 0, ByteRec);
-                string Response = SetCommanClient(Message);
+                string Response = SetCommandClient(Message);
                 Handler.Send(Encoding.UTF8.GetBytes(Response));
             }
 
         }
-        static string SetCommanClient(string Command)
+        static string SetCommandClient(string Command)
         {
-            if (Command == "/token")
+            if (Command.Contains("/token"))
             {
                 if (AllClients.Count < MaxClient)
                 {
-                    Client newClient = new Client();
-                    AllClients.Add(newClient);
+                    string username = Command.Split(" ")[1];
+                    string password = Command.Split(" ")[2];
+                    Client client = data.Clients.FirstOrDefault(x => x.Username == username && x.Password == password);
+                    if (client == null)
+                    {
+                        return "/disconnect";
+                    }
+                    client.CreateToken();
+                    client.DateConnect = DateTime.Now;
+                    data.SaveChanges();
+                    if (client.IsBlacklisted)
+                    {
+                        return "User banned";
+                    }
+                    AllClients.Add(client);
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"New clients connection: " + newClient.Token);
+                    Console.WriteLine($"New client connection: " + client.Token);
+                    Console.ForegroundColor = ConsoleColor.Red;
 
-                    return newClient.Token;
+                    return client.Token;
                 }
                 else
                 {
@@ -90,10 +107,16 @@ namespace Server
             }
             else
             {
-                Classes.Client Client = AllClients.Find(x => x.Token == Command);
-                return Client!=null ? "/connect" : "/disconnect";
+                Client client = AllClients.Find(x => x.Token == Command);
+                if (client != null)
+                    return "/connect";
+                else
+                {
+                    data.Clients.FirstOrDefault(x => x.Token == Command).Token = String.Empty;
+                    data.SaveChanges();
+                    return "/disconnect";
+                }
             }
-            return null;
         }
 
         static void SetCommand()
@@ -117,7 +140,38 @@ namespace Server
             {
                 Help();
             }
+            else if (Command.StartsWith("/ban"))
+            {
+                string[] commandParts = Command.Split(" ");
+                if (commandParts.Length < 2)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Specify the username to add to the blacklist");
+                    return;
+                }
+                BanClient(commandParts[1]);
+            }
         }
+
+        private static void BanClient(string username)
+        {
+            try
+            {
+                Client client = data.Clients.First(x => x.Username == username);
+                client.IsBlacklisted = !client.IsBlacklisted;
+                data.SaveChanges();
+                if (client.IsBlacklisted)
+                {
+                    DisconnectServer(client.Token);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ex.Message);
+            }
+        }
+
         static void DisconnectServer(string command)
         {
             try
@@ -237,8 +291,6 @@ namespace Server
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine($"Client: {Client.Token}, time connection: {Client.DateConnect.ToString("HH:mm:ss dd.MM")}, " + $" duration: {Duration}");
             }
-
-            
         }
     }
 }

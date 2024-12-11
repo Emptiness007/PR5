@@ -52,7 +52,7 @@ namespace Client
             Console.WriteLine($"Client: {ClientToken}, time connection: {ClientDateConnection.ToString("HH:mm:ss dd.MM")}, " + $" duration: {Duration}"); 
         }
 
-        static void ConnectServer()
+        static void ConnectServer(string message)
         {
             IPEndPoint endPoint = new IPEndPoint(ServerIpAddress, ServerPort);
             Socket Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -69,7 +69,7 @@ namespace Client
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("Connection to server successful");
-                Socket.Send(Encoding.UTF8.GetBytes("/token"));
+                Socket.Send(Encoding.UTF8.GetBytes($"/token {message.Split(" ")[0]} {message.Split(" ")[1]}"));
 
                 byte[] Bytes = new byte[10485760];
                 int ByteRec = Socket.Receive(Bytes);
@@ -77,7 +77,17 @@ namespace Client
                 if (Responce == "/limit")
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("There is not enough spaceon the license server");
+                    Console.WriteLine("There is not enough space on the license server");
+                }
+                else if (Responce == "User banned")
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(Responce);
+                }
+                else if (Responce == "/disconnect")
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Incorrect login or password");
                 }
                 else
                 {
@@ -135,9 +145,9 @@ namespace Client
                 File.Delete(Directory.GetCurrentDirectory() + "/.config");
                 OnSetings();
             }
-            else if (Command == "/connect")
+            else if (Command.Contains("/connect") && Command.Split(" ").Length == 3)
             {
-                ConnectServer();
+                ConnectServer(Command.Split(" ")[1] + " " + Command.Split(" ")[2]);
             }
             else if (Command == "/status")
             {
